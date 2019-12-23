@@ -18,8 +18,8 @@ solveSudoku s = let s' = constrainUnsolvedSlots s in
 solveSudokuImpl :: [([Int], Coord)] -> PartialSolution -> [PartialSolution]
 solveSudokuImpl [] s = if (isSolved s && isValidlySolved s) then [s] else []
 solveSudokuImpl ((ps, c):cs) s = -- ps = stack of possible values, c = cood
-    let sWithPs = [setCoordSlotValue s c p | p <- ps]
-    in foldr ((++) . (solveSudokuImpl cs)) [] sWithPs
+    let sWithPs = [constrainUnsolvedSlots $ setCoordSlotValue s c p | p <- ps]
+    in foldr ((++) . (\x -> solveSudokuImpl (sortBestCoordsForResolve x) x)) [] sWithPs
                     
 sortBestCoordsForResolve :: PartialSolution -> [([Int], Coord)]
 sortBestCoordsForResolve s = (sortOn (length . fst) [(fromLeft [] slot, c) | c <- coords s, let slot = fromJust $ indexSoln s c, isLeft slot])
