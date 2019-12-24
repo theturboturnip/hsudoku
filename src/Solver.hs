@@ -5,7 +5,7 @@ import Data.Maybe
 import Data.List
 import Lib
 
-solvedValsAtIndices :: PartialSolution -> [Coord] -> [Int]
+{-solvedValsAtIndices :: PartialSolution -> [Coord] -> [Int]
 solvedValsAtIndices s cs = foldr addSolvedVal [] cs
     where 
         addSolvedVal :: Coord -> [Int] -> [Int]
@@ -51,25 +51,6 @@ constrainUnsolvedSlot s c =
 constrainUnsolvedSlots :: PartialSolution -> PartialSolution
 constrainUnsolvedSlots s = 
     s {  slots = [constrainUnsolvedSlot s (x,y) | y <- [0..si - 1], x <- [0..si - 1]] }
-    where si = size s
+    where si = size s -}
           
                     
-isValidlySolved :: PartialSolution -> Bool
-isValidlySolved s = all hasPossibleValue [(x,y) | x <- [0..si - 1], y <- [0..si - 1]]
-    where 
-        si = size s
-        hasPossibleValue c = 
-            let slot = fromJust $ indexSoln s c in
-            case slot of
-                Right v -> not $ elem v $ impossibleValuesForCoord s c
-                Left _ -> False
-
-isSolved :: PartialSolution -> Bool
-isSolved ss = all isRight (slots ss)
-
-isSolvable :: PartialSolution -> Bool
-isSolvable ss = all notEmpty (slots ss)
-    where notEmpty s = case s of
-            Left [] -> False
-            _ -> True
-            

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c0e5630cbeeaaffea5a932be88b77d250c1d430f5d223a62217614adc2ff71e6
+-- hash: 17f42364a4d9f86c1072cbcccd4447ccc70be0e929f829c1070b973bd1854c4a
 
 name:           HSudoku
 version:        0.1.0.0
@@ -28,6 +28,7 @@ library
   exposed-modules:
       DFSSolver
       Lib
+      Solutions
       Solver
   other-modules:
       Paths_HSudoku
