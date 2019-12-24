@@ -1,11 +1,11 @@
 module Main where
 
-import Lib
 import Data.Either
 import Data.String
-import Solver
-import Solutions
-import DFSSolver
+
+import Solvers.DFS (solveBoard)
+import BoardTypes
+import Sudoku
 
 makeSudokuTable :: [String] -> [Maybe Int]
 makeSudokuTable ls = 

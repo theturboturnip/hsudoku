@@ -1,26 +1,22 @@
-module DFSSolver where
+module Solvers.DFS where
+
+import BoardTypes
 
 import Data.Either
 import Data.Maybe
 import Data.List
 import qualified Data.Map as Map
-import Lib
-import Solutions
 
-
-{-coords :: PartialSolution -> [Coord]
-coords s = [(x,y) | y <- [0..(size s) - 1], x <- [0..(size s) - 1]]-}
-
-solveSudoku :: (Eq v) => BoardState t v -> [BoardState t v]
-solveSudoku s = let s' = constrainUnsolvedSlots s in
-                    solveSudokuImpl (sortBestCoordsForResolve s') s'
+solveBoard :: (Eq v) => BoardState t v -> [BoardState t v]
+solveBoard s = let s' = constrainUnsolvedSlots s in
+                    solveBoardImpl (sortBestCoordsForResolve s') s'
                     
 -- Takes a solution and a list of coords sorted by least possibilities
-solveSudokuImpl :: (Eq v) => [([v], Coord)] -> BoardState t v -> [BoardState t v]
-solveSudokuImpl [] board = if (isSolved board && isValidlySolved board) then [board] else []
-solveSudokuImpl ((ps, c):cs) board = -- ps = stack of possible values, c = cood
+solveBoardImpl :: (Eq v) => [([v], Coord)] -> BoardState t v -> [BoardState t v]
+solveBoardImpl [] board = if (isSolved board && isValidlySolved board) then [board] else []
+solveBoardImpl ((ps, c):cs) board = -- ps = stack of possible values, c = cood
     let sWithPs = [constrainUnsolvedSlots $ updateBoardStateSlot board c p | p <- ps]
-    in foldr ((++) . (\x -> solveSudokuImpl (sortBestCoordsForResolve x) x)) [] sWithPs
+    in foldr ((++) . (\x -> solveBoardImpl (sortBestCoordsForResolve x) x)) [] sWithPs
                     
 sortBestCoordsForResolve :: BoardState t v -> [([v], Coord)]
 sortBestCoordsForResolve board = (sortOn (length . fst) [(fromLeft [] slot, c) | (c,slot) <- Map.toList (slots board), isLeft slot])
@@ -36,13 +32,3 @@ constrainUnsolvedSlot (c, slot) board =
 constrainUnsolvedSlots :: (Eq v) => BoardState t v -> BoardState t v
 constrainUnsolvedSlots board = 
     board {  slots = Map.mapWithKey (\c slot -> constrainUnsolvedSlot (c, slot) board) (slots board) }
-
-
--- Sort coordinates by lowest amount of possibilities
--- Set the top coord to it's first value
--- Check if solveSudokuImpl can solve that
--- Set the top coord to the next possible value, check
--- etc.
--- If a solution is found, return it
--- If none are found, return []
-    
