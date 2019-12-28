@@ -27,6 +27,7 @@ class (Show (a v), SlotValue v) => BoardType (a :: * -> *) v where
     --type Value a; -- Declare a type Value which depends on what a is.
     validCoords :: (a v) -> [Coord]
     initialPossibilities :: (a v) -> [v]
+    bounds :: (a v) -> (Coord, Coord)
     
 data ConstraintResult a = Allow [a] | Exactly [a] | Disallow [a] | Unchanged
     deriving (Show, Eq)
@@ -35,7 +36,7 @@ data ConstraintResult a = Allow [a] | Exactly [a] | Disallow [a] | Unchanged
 --type Constraint t v = Coord -> BoardState t v -> [v]
 type ConstraintFunc (t :: * -> *) v = Coord -> BoardState t v-> ConstraintResult v
 
-data ErasedConstraint (t :: * -> *) v = Constraint { constraintName :: String, constraintFunc :: (ConstraintFunc t v) }
+data ErasedConstraint (t :: * -> *) v = Constraint { constraintName :: String, constraintFunc :: (ConstraintFunc t v), coordConnectionFunc :: Coord -> BoardState t v -> [Coord] }
 instance (BoardType t v, SlotValue v) => Show (ErasedConstraint t v) where
     show = constraintName
     
@@ -45,11 +46,13 @@ class (Show (a (t v) v), SlotValue v) => ErasableConstraint (a :: * -> * -> *) (
     
     erasedFunc :: (BoardType t v) => (a (t v) v) -> ConstraintFunc t v
     
+    erasedConnectionFunc :: (a (t v) v) -> Coord -> BoardState t v -> [Coord]
+    
 {-instance (Show (a (t v) v), SlotValue v) => Show (ErasedConstraint t v) where
 show = erasedName-}
     
 makeErasedConstraint :: (BoardType t v, ErasableConstraint a t v) => (a (t v) v) -> ErasedConstraint t v
-makeErasedConstraint e = Constraint (erasedName e) (erasedFunc e)
+makeErasedConstraint e = Constraint (erasedName e) (erasedFunc e) (erasedConnectionFunc e)
 
 applyConstraintResToSlot :: (SlotValue v) => ConstraintResult v -> Slot v -> Slot v
 applyConstraintResToSlot Unchanged slot = slot
@@ -118,19 +121,28 @@ isSolvable board = all notEmpty (slots board)
             Left [] -> False
             _ -> True
             
+squareCoords :: Int -> [Coord]
+squareCoords s = [(x,y) | y <- [0..s-1], x <- [0..s-1]]
 
 -- TODO: If we include the Show constraint in the data type we can't derive Show without "a standalone deriving declaration"
 data SquareBoardType v = {-(Show v) => -}SquareBoardType { size :: Int, possibleValues :: [v] }
     deriving (Show)
 instance (SlotValue v) => BoardType SquareBoardType v where
-    validCoords SquareBoardType { size = s } = [(x,y) | y <- [0..s-1], x <- [0..s-1]]
+    validCoords SquareBoardType { size = s } = squareCoords s
+    
+    bounds SquareBoardType { size = s } = ((0,0), (s-1,s-1))
     
     initialPossibilities = possibleValues
     
-showSquareContents :: (SlotValue v) => BoardState SquareBoardType v -> [String] 
-showSquareContents board = [showLine y | y <- [0..(size $ boardType board) - 1]]
-    where showLine y = unwords [showVal v | x <- [0..(size $ boardType board) - 1], let v = fromJust $ getSlotValue (x,y) board]
-          showVal v = case v of 
-                           Right x -> (show x)
-                           Left _ -> "x"
+showSquareContents :: (SlotValue v) => BoardState SquareBoardType v -> String
+showSquareContents = showBoardContents
     
+showBoardContents :: (SlotValue v, BoardType t v) => BoardState t v -> String
+showBoardContents board = 
+    let ((xMin, yMin), (xMax, yMax)) = bounds $ boardType board
+    in unlines [showLine [xMin..xMax] y | y <- [yMin..yMax]]
+    where showLine xs y = unwords [showVal v | x <- xs, let v = getSlotValue (x,y) board]
+          showVal v = case v of 
+                        Nothing -> " "
+                        Just (Right x) -> (show x)
+                        Just (Left _) -> "?"

@@ -3,23 +3,39 @@ module Main where
 import qualified Data.Map as Map
 import Data.Either
 import Data.String
+import Data.List.Split (splitOn)
+import System.IO.Unsafe
 
 import Solvers.DFS (solveBoard)
 import BoardTypes
 import Sudoku
 import KillerSudoku
+import Kakuro
+
+wordAsMaybeInt :: String -> Maybe Int
+wordAsMaybeInt cs
+    | all (\x -> x `elem` "123456789") cs = Just $ (read :: String -> Int) cs
+    | otherwise = Nothing
 
 makeSudokuTable :: [String] -> [Maybe Int]
 makeSudokuTable ls = 
     let ws = concat [words l | l <- ls]
     in map wordAsMaybeInt ws
-    where wordAsMaybeInt :: String -> Maybe Int
-          wordAsMaybeInt cs
-              | all (\x -> x `elem` "123456789") cs = Just $ (read :: String -> Int) cs
-              | otherwise = Nothing
               
 makeKillerSudokuGroups :: [String] -> [String]
 makeKillerSudokuGroups ls = concat [words l | l <- ls]
+
+makeKakuroTable :: [String] -> [ReadCell]
+makeKakuroTable ls =
+    let ws = concat [words l | l <- ls]
+    in map wordAsReadCell ws
+    where wordAsReadCell :: String -> ReadCell
+          wordAsReadCell cs
+              | cs == "x" || cs == "X" = Unused
+              | cs == "?" = Unknown
+              | all (\x -> x `elem` "0123456789/-") cs = let [down, right] = splitOn "/" cs
+                                                        in Director {downwardsSum = wordAsMaybeInt down, rightSum = wordAsMaybeInt right}
+              | otherwise = error $ "Couldn't parse " ++ cs ++ " into a cell"
 
 example2x2Table = makeSudokuTable [
         "1 x x 4",
@@ -116,9 +132,32 @@ solvedKiller = makeKillerSudokuBoard 4 2
        "4 1 2 3"
     ]) example2x2KillerGroups example2x2KillerGroupTargets
 
+    
+example2x2Kakuro :: KakuroBoard
+example2x2Kakuro = kakuroBoardFromSquare 3 $
+    makeKakuroTable [
+        "X 7/- 3/-",
+        "-/5 ? ?",
+        "-/5 ? ?"
+    ]
+    
+exampleLargeKakuro :: IO KakuroBoard
+exampleLargeKakuro = do
+    puzzle <- readFile "ex_9x9_kakuro.txt"
+    return $ kakuroBoardFromSquare 9 $ makeKakuroTable $ lines puzzle
+    
+momKakuro :: IO KakuroBoard
+momKakuro = do
+    puzzle <- readFile "FULL_KAKURO.csv"
+    return $ kakuroBoardFromSquare 21 $ makeKakuroTable $ lines puzzle
+    
+solveAndPrint :: (SlotValue v, BoardType t v) => BoardState t v -> IO ()
+solveAndPrint board = mapM_ (putStrLn . showBoardContents) $ solveBoard board
 
 main :: IO ()
 main = do
     putStrLn $ show exampleBoard
     putStrLn $ "Solved: " ++ (show $ isSolved exampleBoard)
     putStrLn $ "Solvable: " ++ (show $ isSolvable exampleBoard)
+    putStrLn $ "Solving kakuro..."
+    solveAndPrint (unsafePerformIO momKakuro)

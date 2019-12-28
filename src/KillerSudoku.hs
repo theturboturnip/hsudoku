@@ -89,3 +89,12 @@ instance ErasableConstraint KillerSudokuSetTotalConstraint t Int where
                 remainingTarget = target - currentSum
             in Allow $ sumPossUnique remainingTarget (length coords - length solvedValues) minVal maxVal
         else Unchanged
+        
+    erasedConnectionFunc (KillerSudokuSetRepeatsConstraint coords target) c board =
+        if elem c coords then
+            (coords \\ [c])
+        else []
+    erasedConnectionFunc (KillerSudokuSetUniqueConstraint coords target minVal maxVal) c board =
+        if elem c coords then
+            (coords \\ [c])
+        else []

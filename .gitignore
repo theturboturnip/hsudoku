@@ -2,3 +2,4 @@
 cipherlib.cabal
 *~
 *.lock
+*#

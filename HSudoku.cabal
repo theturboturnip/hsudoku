@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 08e136c78d9b92bb2a8ce131bea218f031dfef4f8fc0aa684861ea19081e7b1e
+-- hash: b509f0a4c23af41638e698c4c327ffa631a2f8f63967bd7741930229455bee16
 
 name:           HSudoku
 version:        0.1.0.0
@@ -27,6 +27,7 @@ source-repository head
 library
   exposed-modules:
       BoardTypes
+      Kakuro
       KillerSudoku
       Solvers.DFS
       Sudoku
