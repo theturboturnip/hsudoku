@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeOperators, MultiParamTypeClasses, GADTs, FlexibleInstances, UndecidableInstances #-}
+{-# LANGUAGE TypeOperators, MultiParamTypeClasses, TypeFamilies, GADTs, FlexibleContexts, FlexibleInstances, UndecidableInstances #-}
 module BoardTypes where
 
 import qualified Data.Map as Map
@@ -14,12 +14,30 @@ type Coord = (Int, Int)
 type Slot a = Either [a] a -- Left implies unsolved slot with list of possible values, Right is solved to a single value.
 
     
-class (Show a) => BoardType a where
+class (Show (a v), Eq v) => BoardType (a :: * -> *) v where
     --type Value a; -- Declare a type Value which depends on what a is.
-    validCoords :: a -> [Coord]
-
+    validCoords :: (a v) -> [Coord]
+    initialPossibilities :: (a v) -> [v]
+    
 -- returns list of values the slot cannot have
-type Constraint t v = Coord -> BoardState t v -> [v]
+--type Constraint t v = Coord -> BoardState t v -> [v]
+type ConstraintFunc (t :: * -> *) v = Coord -> BoardState t v-> [v]
+
+data ErasedConstraint (t :: * -> *) v = Constraint { constraintName :: String, constraintFunc :: (ConstraintFunc t v) }
+instance (BoardType t v, Eq v) => Show (ErasedConstraint t v) where
+    show = constraintName
+    
+class (Show (a (t v) v), Eq v) => ErasableConstraint (a :: * -> * -> *) (t :: * -> *) v where
+    erasedName :: (a (t v) v) -> String
+    erasedName = show
+    
+    erasedFunc :: (BoardType t v) => (a (t v) v) -> ConstraintFunc t v
+    
+{-instance (Show (a (t v) v), Eq v) => Show (ErasedConstraint t v) where
+show = erasedName-}
+    
+makeErasedConstraint :: (BoardType t v, ErasableConstraint a t v) => (a (t v) v) -> ErasedConstraint t v
+makeErasedConstraint e = Constraint (erasedName e) (erasedFunc e)
 
 subtractFromSlot :: (Eq v) => [v] -> Slot v -> Slot v
 subtractFromSlot _ (Right v) = Right v
@@ -27,19 +45,19 @@ subtractFromSlot vs (Left oldVs) = case (oldVs \\ vs) of
                                         [v] -> Right v
                                         newVs -> Left newVs
 
-data BoardState t v = 
-    (BoardType t, Eq v) => BoardState 
-    { boardType :: t
+data BoardState (t :: * -> *) v = 
+    (BoardType t v, Eq v) => BoardState 
+    { boardType :: (t v)
     , slots :: Map.Map Coord (Slot v)
-    , constraints :: [Constraint t v]
+    , constraints :: [ErasedConstraint t v]
     }
 
-instance (BoardType t, Show t, Eq v, Show v) => Show (BoardState t v) where
-    show board = (show $ boardType board) ++ '\n':(show $ slots board)
+instance (BoardType t v, Show (t v), Eq v, Show v) => Show (BoardState t v) where
+    show board = (show $ boardType board) ++ '\n':(show $ slots board) ++ '\n':(show $ constraints board)
 
     
 findImpossibleValues :: (Eq v) => Coord -> BoardState t v -> [v]
-findImpossibleValues c board = nub $ foldr (\constr vs -> (constr c board) ++ vs) [] (constraints board)
+findImpossibleValues c board = nub $ foldr (\constr vs -> (constr c board) ++ vs) [] (map constraintFunc $ constraints board)
     
 getSlotValue :: Coord -> BoardState t v -> Maybe (Slot v)
 getSlotValue c board = (slots board) Map.!? c 
@@ -71,10 +89,13 @@ isSolvable board = all notEmpty (slots board)
             _ -> True
             
 
-data SquareBoardType = SquareBoardType { size :: Int }
+-- TODO: If we include the Show constraint in the data type we can't derive Show without "a standalone deriving declaration"
+data SquareBoardType v = {-(Show v) => -}SquareBoardType { size :: Int, possibleValues :: [v] }
     deriving (Show)
-instance BoardType SquareBoardType where
+instance (Show v, Eq v) => BoardType SquareBoardType v where
     validCoords SquareBoardType { size = s } = [(x,y) | y <- [0..s-1], x <- [0..s-1]]
+    
+    initialPossibilities = possibleValues
     
 showSquareContents :: (Show v) => BoardState SquareBoardType v -> [String] 
 showSquareContents board = [showLine y | y <- [0..(size $ boardType board) - 1]]
