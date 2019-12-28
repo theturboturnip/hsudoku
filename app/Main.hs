@@ -1,29 +1,44 @@
 module Main where
 
+import qualified Data.Map as Map
 import Data.Either
 import Data.String
 
 import Solvers.DFS (solveBoard)
 import BoardTypes
 import Sudoku
+import KillerSudoku
 
 makeSudokuTable :: [String] -> [Maybe Int]
 makeSudokuTable ls = 
-    let ws = foldr (++) [] [words l | l <- ls]
+    let ws = concat [words l | l <- ls]
     in map wordAsMaybeInt ws
     where wordAsMaybeInt :: String -> Maybe Int
           wordAsMaybeInt cs
               | all (\x -> x `elem` "123456789") cs = Just $ (read :: String -> Int) cs
               | otherwise = Nothing
+              
+makeKillerSudokuGroups :: [String] -> [String]
+makeKillerSudokuGroups ls = concat [words l | l <- ls]
 
-exampleBoard :: SudokuBoard
-exampleBoard = makeSudokuBoard 4 2 
-    $ makeSudokuTable [
+example2x2Table = makeSudokuTable [
         "1 x x 4",
         "x x x x",
         "x x x x",
         "4 x x 3"
     ]
+    
+example2x2KillerGroups = makeKillerSudokuGroups [
+        "a a a b",
+        "c b b b",
+        "c c d d",
+        "e e d d"
+    ]
+    
+example2x2KillerGroupTargets =  (Map.fromList [("a", 6), ("b", 11), ("c", 8), ("d", 10), ("e", 5)])
+
+exampleBoard :: SudokuBoard
+exampleBoard = makeSudokuBoard 4 2 example2x2Table
 {-[
     Just 1,  Nothing, Nothing, Just 4,
     Nothing, Nothing, Nothing, Nothing,
@@ -58,6 +73,10 @@ example3x3Normal = makeSudokuBoard 9 3
         "x x 2 7 8 5 6 x x",
         "1 x x x x x x x 9"
     ]
+    
+example2x2Killer :: KillerSudokuBoard
+example2x2Killer = makeKillerSudokuBoard 4 2 example2x2Table example2x2KillerGroups example2x2KillerGroupTargets
+    
 
 invalidSolvedSoln :: SudokuBoard
 invalidSolvedSoln = makeSudokuBoard 4 2 
@@ -77,6 +96,14 @@ solvedSoln = makeSudokuBoard 4 2
        "4 1 2 3"
     ]
 
+solvedKiller :: KillerSudokuBoard
+solvedKiller = makeKillerSudokuBoard 4 2 
+    (makeSudokuTable [
+       "1 2 3 4",
+       "3 4 1 2", 
+       "2 3 4 1", 
+       "4 1 2 3"
+    ]) example2x2KillerGroups example2x2KillerGroupTargets
 
 
 main :: IO ()

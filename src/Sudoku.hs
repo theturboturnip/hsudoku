@@ -29,26 +29,26 @@ squareCoords (ox,oy) size = [(x,y) | y <- [oy..oy + size - 1], x <- [ox..ox + si
 
 data SudokuSquaresConstraint t v = SudokuSquaresConstraint Int
     deriving Show
-instance (Show v, Eq v) => ErasableConstraint SudokuSquaresConstraint SquareBoardType v where
+instance (SlotValue v) => ErasableConstraint SudokuSquaresConstraint SquareBoardType v where
     erasedFunc (SudokuSquaresConstraint squareSize) c board = 
         let (x,y) = c
             squareOrigin = (x - x `mod` squareSize, y - y `mod` squareSize)
         -- If the slot is a Left, it should not be allowed to have any of the values in the line
-        in getSolvedSlotValues ((squareCoords squareOrigin squareSize) \\ [c]) board
+        in Disallow $ getSolvedSlotValues ((squareCoords squareOrigin squareSize) \\ [c]) board
     
 data SudokuLineConstraint t v = SudokuVerticalConstraint | SudokuHorizontalConstraint
     deriving Show
-instance (Show v, Eq v) => ErasableConstraint SudokuLineConstraint SquareBoardType v where
+instance (SlotValue v) => ErasableConstraint SudokuLineConstraint SquareBoardType v where
     erasedFunc SudokuVerticalConstraint c board = 
         let (x,y) = c
             s = size (boardType board)
             csInDir = [(x,y') | y' <- [0..s - 1], y /= y']
         -- If the slot is a Left, it should not be allowed to have any of the values in the line
-        in getSolvedSlotValues csInDir board
+        in Disallow $ getSolvedSlotValues csInDir board
         
     erasedFunc SudokuHorizontalConstraint c board = 
         let (x,y) = c
             s = size (boardType board)
             csInDir = [(x',y) | x' <- [0..s - 1], x' /= x]
         -- If the slot is a Left, it should not be allowed to have any of the values in the line
-        in getSolvedSlotValues csInDir board
+        in Disallow $ getSolvedSlotValues csInDir board
