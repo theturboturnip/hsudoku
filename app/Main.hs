@@ -28,6 +28,7 @@ example2x2Table = makeSudokuTable [
         "4 x x 3"
     ]
     
+    {-
 example2x2KillerGroups = makeKillerSudokuGroups [
         "a a a b",
         "c b b b",
@@ -36,7 +37,17 @@ example2x2KillerGroups = makeKillerSudokuGroups [
     ]
     
 example2x2KillerGroupTargets =  (Map.fromList [("a", 6), ("b", 11), ("c", 8), ("d", 10), ("e", 5)])
+    -}
 
+example2x2KillerGroups = makeKillerSudokuGroups [
+        "d c b b",
+        "d c c b",
+        "e e a b",
+        "e a a a"
+    ]
+    
+example2x2KillerGroupTargets =  (Map.fromList [("a", 10), ("b", 10), ("c", 7), ("d", 4), ("e", 9)])
+    
 exampleBoard :: SudokuBoard
 exampleBoard = makeSudokuBoard 4 2 example2x2Table
 {-[
