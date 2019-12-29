@@ -6,7 +6,7 @@ import Data.String
 import Data.List.Split (splitOn)
 import System.IO.Unsafe
 
-import Solvers.DFS (solveBoard)
+import Solvers.DFS (solveBoard, boardTree, extractFinishedBoards, StepData)
 import BoardTypes
 import Sudoku
 import KillerSudoku
@@ -154,10 +154,29 @@ momKakuro = do
 solveAndPrint :: (SlotValue v, BoardType t v) => BoardState t v -> IO ()
 solveAndPrint board = mapM_ (putStrLn . showBoardContents) $ solveBoard board
 
+solveAndPrintFirst board = putStrLn $ showBoardContents $ head $ solveBoard board
+
+nextStatesStats nextStates = let percentagesFilled = map (\(b,_,_) -> ( * length $ filter isSolved $ map snd $ Map.toList $ slots b) / (length $ slots b)) nextStates
+                             in (percentagesFilled, 0)
+
+solveAndPrintProgress :: [[StepData t v]] -> IO ()
+solveAndPrintProgress (boards:nextBoards) = do
+    let fs = extractFinishedBoards boards
+        (percentagesFilledList, _) = nextStatesStats nextBoards
+    if null fs
+          then do
+            putStr $ "No full solns yet, testing " ++ (show $ length $ head $ nextBoards) ++ " partial solutions next "
+            putStrLn $ "with " ++ (show $ 100.0 * (min percentagesFilledList)) ++ "% - " ++ (show $ 100.0 $ (max percentagesFilledList)) ++ "% of filled spaces"
+            solveAndPrintProgress nextBoards
+          else do
+            putStrLn $ "Found solution!"
+            putStrLn $ showBoardContents $ head fs
+solveAndPrintProgress [] = putStrLn "No board"
+
 main :: IO ()
 main = do
     putStrLn $ show exampleBoard
-    putStrLn $ "Solved: " ++ (show $ isSolved exampleBoard)
-    putStrLn $ "Solvable: " ++ (show $ isSolvable exampleBoard)
+    putStrLn $ "Solved: " ++ (show $ isBoardSolved exampleBoard)
+    putStrLn $ "Solvable: " ++ (show $ isBoardSolvable exampleBoard)
     putStrLn $ "Solving kakuro..."
-    solveAndPrint (unsafePerformIO momKakuro)
+    solveAndPrintProgress $ boardTree (unsafePerformIO exampleLargeKakuro)--momKakuro)

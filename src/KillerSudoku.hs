@@ -9,17 +9,18 @@ import Data.List
 import Data.Maybe
 import Data.Either
 import Data.String
+import Data.Bits
 
 type KillerSudokuBoard = SudokuBoard
 makeKillerSudokuBoardRepeats :: (Eq a) => Int -> Int -> [Maybe Int] -> [a] -> Map.Map a Int -> KillerSudokuBoard
 makeKillerSudokuBoardRepeats size squareSize knownParts coordGroups groupTotals = 
     let ps = [1..size]
         boardType = SquareBoardType { size = size, possibleValues = ps }
-        possibleWhenNotSet = Left ps
+        possibleWhenNotSet = listToSlot ps
         groupCoords = zip coordGroups (validCoords boardType)
         coordConstraints = [KillerSudokuSetRepeatsConstraint coords target | (key, target) <- Map.toList groupTotals, let coords = map snd $ filter (\(k, c) -> k == key) groupCoords]
     in BoardState { boardType = boardType
-                  , slots = Map.fromList $ zip (validCoords boardType) (map (\x -> if (isNothing x) then possibleWhenNotSet else Right $ fromJust x) knownParts)
+                  , slots = Map.fromList $ zip (validCoords boardType) (map (\x -> if (isNothing x) then possibleWhenNotSet else Solved $ fromJust x) knownParts)
                   , constraints = map makeErasedConstraint coordConstraints ++ [
                         makeErasedConstraint $ SudokuSquaresConstraint squareSize, 
                         makeErasedConstraint $ SudokuHorizontalConstraint,
@@ -31,11 +32,11 @@ makeKillerSudokuBoard :: (Eq a) => Int -> Int -> [Maybe Int] -> [a] -> Map.Map a
 makeKillerSudokuBoard size squareSize knownParts coordGroups groupTotals = 
     let ps = [1..size]
         boardType = SquareBoardType { size = size, possibleValues = ps }
-        possibleWhenNotSet = Left ps
+        possibleWhenNotSet = listToSlot ps
         groupCoords = zip coordGroups (validCoords boardType)
         coordConstraints = [KillerSudokuSetUniqueConstraint coords target 1 size | (key, target) <- Map.toList groupTotals, let coords = map snd $ filter (\(k, c) -> k == key) groupCoords]
     in BoardState { boardType = boardType
-                  , slots = Map.fromList $ zip (validCoords boardType) (map (\x -> if (isNothing x) then possibleWhenNotSet else Right $ fromJust x) knownParts)
+                  , slots = Map.fromList $ zip (validCoords boardType) (map (\x -> if (isNothing x) then possibleWhenNotSet else Solved $ fromJust x) knownParts)
                   , constraints = map makeErasedConstraint coordConstraints ++ [
                         makeErasedConstraint $ SudokuSquaresConstraint squareSize, 
                         makeErasedConstraint $ SudokuHorizontalConstraint,
@@ -60,6 +61,7 @@ minForNChoices ps n = take n $ sort ps-}
     
 -- This might be solvable recursively?
 sumPossUnique :: Int -> Int -> Int -> Int -> [Int]
+sumPossUnique target 1 minVal maxVal = if minVal <= target && target <= maxVal then [target] else []
 sumPossUnique target slotCount minVal maxVal = 
     let smallestNextSum = sum [minVal..min (minVal + slotCount - 1 - 1) (maxVal - 1)]
         largestNextSum  = sum [max (minVal + 1) (maxVal - slotCount + 1 + 1)..maxVal]
@@ -76,18 +78,21 @@ data KillerSudokuSetTotalConstraint t v = KillerSudokuSetRepeatsConstraint [Coor
 instance ErasableConstraint KillerSudokuSetTotalConstraint t Int where
     erasedFunc (KillerSudokuSetRepeatsConstraint coords target) c board = 
         if elem c coords then
-            let solvedValues = getSolvedSlotValues (coords \\ [c]) board
+            let solvedValues = bitsToList $ getSolvedSlotValues (coords \\ [c]) board
                 currentSum = sum solvedValues
                 remainingTarget = target - currentSum
-            in Allow $ sumPossWithRepeats remainingTarget (length coords - length solvedValues) 
+            in Allow $ listToBits $ sumPossWithRepeats remainingTarget (length coords - length solvedValues) 
         else Unchanged
         
     erasedFunc (KillerSudokuSetUniqueConstraint coords target minVal maxVal) c board = 
         if elem c coords then
-            let solvedValues = getSolvedSlotValues (coords \\ [c]) board
-                currentSum = sum solvedValues
+            let solvedValuesBits = getSolvedSlotValues (coords \\ [c]) board
+                solvedValues = bitsToList solvedValuesBits
+                currentSum = sum $ solvedValues
                 remainingTarget = target - currentSum
-            in Allow $ sumPossUnique remainingTarget (length coords - length solvedValues) minVal maxVal
+                possibleValues = listToBits $ sumPossUnique remainingTarget (length coords - length solvedValues) minVal maxVal
+                finalAllowed = possibleValues .&. (complement solvedValuesBits)
+            in Allow $ finalAllowed
         else Unchanged
         
     erasedConnectionFunc (KillerSudokuSetRepeatsConstraint coords target) c board =

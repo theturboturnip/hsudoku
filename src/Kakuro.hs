@@ -19,7 +19,7 @@ data KakuroBoardType v = KakuroBoardType { unknownCoords :: [Coord], bottomRight
     deriving (Show)
 instance BoardType KakuroBoardType Int where
     validCoords = unknownCoords
-    initialPossibilities = const [1..9]
+    initialPossibilities = const $ (listToBits :: [Int] -> SlotValues) [1..9]
     bounds board = ((0,0), bottomRight board)
     
 type KakuroRunTotalConstraint = KillerSudokuSetTotalConstraint (KakuroBoardType Int) Int
@@ -31,7 +31,7 @@ kakuroBoardFromSquare size cells =
         constraints = foldr (addConstraintsForDirector indexer (size,size)) [] (squareCoords size)
         boardType = KakuroBoardType { unknownCoords = unknownCoords, bottomRight = (size,size) }
     in BoardState { boardType = boardType
-                  , slots = Map.fromList $ zip unknownCoords (repeat $ Left $ initialPossibilities boardType)
+                  , slots = Map.fromList $ zip unknownCoords (repeat $ bitsToSlot $ initialPossibilities boardType)
                   , constraints = map makeErasedConstraint constraints
                   }
     

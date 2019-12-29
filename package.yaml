@@ -27,6 +27,7 @@ dependencies:
 #- cryptohash-md5 >= 0.1 && < 1
 - bytestring >= 0.9 && < 1
 #- base16-bytestring >= 0.1 && < 1
+- mtl >= 2 && < 3
 
 library:
   source-dirs: src

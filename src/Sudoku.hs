@@ -14,9 +14,9 @@ makeSudokuBoard :: Int -> Int -> [Maybe Int] -> SudokuBoard
 makeSudokuBoard size squareSize knownParts = 
     let ps = [1..size]
         boardType = SquareBoardType { size = size, possibleValues = ps }
-        possibleWhenNotSet = Left ps
+        possibleWhenNotSet = listToSlot ps
     in BoardState { boardType = boardType
-                  , slots = Map.fromList $ zip (validCoords boardType) (map (\x -> if (isNothing x) then possibleWhenNotSet else Right $ fromJust x) knownParts)
+                  , slots = Map.fromList $ zip (validCoords boardType) (map (\x -> if (isNothing x) then possibleWhenNotSet else Solved $ fromJust x) knownParts)
                   , constraints = [
                         makeErasedConstraint $ SudokuSquaresConstraint squareSize, 
                         makeErasedConstraint $ SudokuHorizontalConstraint,
@@ -33,7 +33,6 @@ instance (SlotValue v) => ErasableConstraint SudokuSquaresConstraint SquareBoard
     erasedFunc (SudokuSquaresConstraint squareSize) c board = 
         let (x,y) = c
             squareOrigin = (x - x `mod` squareSize, y - y `mod` squareSize)
-        -- If the slot is a Left, it should not be allowed to have any of the values in the line
         in Disallow $ getSolvedSlotValues ((subsquareCoords squareOrigin squareSize) \\ [c]) board
         
     erasedConnectionFunc (SudokuSquaresConstraint squareSize) c board = 
@@ -48,14 +47,12 @@ instance (SlotValue v) => ErasableConstraint SudokuLineConstraint SquareBoardTyp
         let (x,y) = c
             s = size (boardType board)
             csInDir = [(x,y') | y' <- [0..s - 1], y /= y']
-        -- If the slot is a Left, it should not be allowed to have any of the values in the line
         in Disallow $ getSolvedSlotValues csInDir board
         
     erasedFunc SudokuHorizontalConstraint c board = 
         let (x,y) = c
             s = size (boardType board)
             csInDir = [(x',y) | x' <- [0..s - 1], x' /= x]
-        -- If the slot is a Left, it should not be allowed to have any of the values in the line
         in Disallow $ getSolvedSlotValues csInDir board
         
     erasedConnectionFunc SudokuVerticalConstraint c board = 
