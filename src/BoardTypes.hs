@@ -54,8 +54,8 @@ show = erasedName-}
 makeErasedConstraint :: (BoardType t v, ErasableConstraint a t v) => (a (t v) v) -> ErasedConstraint t v
 makeErasedConstraint e = Constraint (erasedName e) (erasedFunc e) (erasedConnectionFunc e)
 
-applyConstraintResToSlot :: (SlotValue v) => ConstraintResult v -> Slot v -> Slot v
-applyConstraintResToSlot Unchanged slot = slot
+applyConstraintResToSlot :: (SlotValue v) => ConstraintResult v -> Slot v -> (Slot v, Bool)
+applyConstraintResToSlot Unchanged slot = (slot, False)
 applyConstraintResToSlot (Disallow vs) slot = 
     let oldVs = slotToList slot 
     in listToSlot $ oldVs \\ vs
