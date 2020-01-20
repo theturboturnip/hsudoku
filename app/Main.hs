@@ -2,11 +2,12 @@ module Main where
 
 import qualified Data.Map as Map
 import Data.Either
+import Data.Ratio
 import Data.String
 import Data.List.Split (splitOn)
 import System.IO.Unsafe
 
-import Solvers.DFS (solveBoard, boardTree, extractFinishedBoards, StepData)
+import Solvers.DFS (solveBoard, boardTree, extractFinishedBoards, StepData(NeedsStep, Finished))
 import BoardTypes
 import Sudoku
 import KillerSudoku
@@ -152,11 +153,22 @@ momKakuro = do
     return $ kakuroBoardFromSquare 21 $ makeKakuroTable $ lines puzzle
     
 solveAndPrint :: (SlotValue v, BoardType t v) => BoardState t v -> IO ()
-solveAndPrint board = mapM_ (putStrLn . showBoardContents) $ solveBoard board
+solveAndPrint board = do
+    putStrLn $ showBoardContents board
+    mapM_ (putStrLn . showBoardContents) $ solveBoard board
 
-solveAndPrintFirst board = putStrLn $ showBoardContents $ head $ solveBoard board
+solveAndPrintFirst board = do
+    putStrLn $ showBoardContents board
+    putStrLn $ showBoardContents $ head $ solveBoard board
 
-nextStatesStats nextStates = let percentagesFilled = map (\(b,_,_) -> ( * length $ filter isSolved $ map snd $ Map.toList $ slots b) / (length $ slots b)) nextStates
+percentageFilled :: StepData t v -> Double
+percentageFilled (NeedsStep (b,_,_)) = let solved = length $ [s | (c,s) <- Map.toList $ slots b, isSolved s]
+                                           total = length $ slots b
+                                       in (fromIntegral solved) / (fromIntegral total)
+percentageFilled (Finished _) = 1.0
+    
+nextStatesStats :: [[StepData t v]] -> ([Double], Double)
+nextStatesStats nextStates = let percentagesFilled = map percentageFilled (concat nextStates)
                              in (percentagesFilled, 0)
 
 solveAndPrintProgress :: [[StepData t v]] -> IO ()
@@ -166,7 +178,7 @@ solveAndPrintProgress (boards:nextBoards) = do
     if null fs
           then do
             putStr $ "No full solns yet, testing " ++ (show $ length $ head $ nextBoards) ++ " partial solutions next "
-            putStrLn $ "with " ++ (show $ 100.0 * (min percentagesFilledList)) ++ "% - " ++ (show $ 100.0 $ (max percentagesFilledList)) ++ "% of filled spaces"
+            putStrLn $ "with " ++ (show $ 100.0 * (min percentagesFilledList)) ++ "% - " ++ (show $ 100.0 * (max percentagesFilledList)) ++ "% of filled spaces"
             solveAndPrintProgress nextBoards
           else do
             putStrLn $ "Found solution!"
